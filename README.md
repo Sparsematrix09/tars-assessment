@@ -1,5 +1,5 @@
 A modern, real-time chat application built for the Tars assessment. This project focuses on delivering a seamless messaging experience with secure authentication, instant real-time database syncing, and a clean, responsive UI.
-**[View Live Demo]([YOUR_VERCEL_URL_HERE](https://tars-assessment.vercel.app/))**
+**[🚀 View Live Demo](https://tars-assessment.vercel.app/)**
 
 ## Features
 
