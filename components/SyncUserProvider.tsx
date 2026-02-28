@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api"; 
-export function SyncUserProvider({ children }: { children: React.ReactNode }) {
+
+export function SyncUserProvider({ children }: {children: React.ReactNode }){
   const { user, isLoaded, isSignedIn } = useUser();
   const pushProfileToDatabase = useMutation(api.users.syncProfile);
   const [hasSynced, setHasSynced] = useState(false);
-  useEffect(() => {
+  useEffect(() =>{
     if (isLoaded && isSignedIn && user && !hasSynced) {
       const synchronize = async () => {
         try {

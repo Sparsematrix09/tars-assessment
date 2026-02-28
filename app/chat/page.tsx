@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquareDashed } from "lucide-react";
+
 export default function ChatLobbyView() {
   return (
     <div className="flex-1 flex items-center justify-center bg-muted/5 h-full">
@@ -11,7 +12,7 @@ export default function ChatLobbyView() {
           <div className="space-y-1">
             <h3 className="font-semibold text-lg tracking-tight">Your Messages</h3>
             <p className="text-sm text-muted-foreground">
-              Select a conversation from the sidebar or search for a user to start a new chat.
+              Select a conversation from sidebar or search for a user to start a new chat.
             </p>
           </div>
         </CardContent>

@@ -1,52 +1,59 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 export const syncProfile = mutation({
-  args: { name: v.string(), email: v.string(), image: v.string() },
-  handler: async (ctx, args) => {
+  args: { 
+    name: v.string(), 
+    email: v.string(), 
+    image: v.string() 
+  },
+  handler: async (ctx, { name, email, image }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const existingUser = await ctx.db
+    if (!identity) {
+      throw new Error("Authentication required to sync profile.");
+    }
+    const clerkId = identity.subject;
+    const user = await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .unique();
 
-    if (existingUser) {
-      return await ctx.db.patch(existingUser._id, {
-        name: args.name,
-        image: args.image,
-      });
+    if (user) {
+      await ctx.db.patch(user._id, { name, image });
+      return user._id;
     }
-
     return await ctx.db.insert("users", {
-      clerkId: identity.subject,
-      name: args.name,
-      email: args.email,
-      image: args.image,
+      clerkId,
+      name,
+      email,
+      image,
     });
   },
 });
 export const searchProfiles = query({
-  args: { query: v.string() },
-  handler: async (ctx, args) => {
+  args: { searchTerm: v.string() },
+  handler: async (ctx, { searchTerm }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
-    let foundUsers;
-    if (args.query) {
-      foundUsers = await ctx.db
+
+    let users;
+    
+    if (searchTerm.trim()) {
+      users = await ctx.db
         .query("users")
-        .withSearchIndex("search_name", (q) => q.search("name", args.query))
+        .withSearchIndex("search_name", (q) => q.search("name", searchTerm))
         .collect();
     } else {
-      foundUsers = await ctx.db.query("users").collect();
+      users = await ctx.db.query("users").collect();
     }
-    return foundUsers.filter((u) => u.clerkId !== identity.subject);
+    return users.filter((user) => user.clerkId !== identity.subject);
   },
 });
-export const me = query({
+
+export const me =query({ 
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
+
     return await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))

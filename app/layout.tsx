@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { ConvexClientProvider } from "@/components/ConvexClientProvider"; 
 import { SyncUserProvider } from "@/components/SyncUserProvider";
 import "./globals.css";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -12,7 +13,8 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-export const metadata: Metadata = {
+//added metadata good for SEO
+export const metadata: Metadata={
   title: "Real-time Chat | Tars Assessment",
   description: "A real-time chat application built with Next.js, Convex, and Clerk.",
 };

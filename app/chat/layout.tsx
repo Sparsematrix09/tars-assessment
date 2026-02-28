@@ -9,137 +9,156 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, MessageSquare, Plus } from "lucide-react";
+import { Search, MessageSquare, Plus, Circle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function ChatApplicationLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const pathname = usePathname();
-  const router = useRouter();
-  
-  const [searchPhrase, setSearchPhrase] = useState("");
+  const router = useRouter();    
+  const [searchText, setSearchText] = useState<string>("");
+  //Skip queries until user is ready to prevent Unauthorized warnings
+  const searchResults = useQuery(
+    api.users.searchProfiles, 
+    user && searchText ? { searchTerm: searchText } : "skip"
+  );
 
-  const discoveredUsers = useQuery(api.users.searchProfiles, { query: searchPhrase });
-  const activeChats = useQuery(api.conversations.getUserChats);
-  const establishChat = useMutation(api.conversations.findOrCreate);
+  const activeConversations = useQuery(
+    api.conversations.getUserChats, 
+    user ? {} : "skip"
+  );
 
-  const isViewingSpecificChat = pathname !== "/chat";
+  const startConversation = useMutation(api.conversations.findOrCreate);
+  const isMobileChatActive = pathname !== "/chat";
 
-  const handleStartChat = async (targetUserId: Id<"users">) => {
+  const handleSelectUser =async (targetUserId: Id<"users">) =>{
     try {
-      const newChatId = await establishChat({ targetUserId });
-      router.push(`/chat/${newChatId}`);
-      setSearchPhrase(""); 
+      const chatId = await startConversation({ targetUserId });
+      router.push(`/chat/${chatId}`);
+      setSearchText("");
     } catch (error) {
-      console.error("Failed to start chat", error);
+      console.error("Failed to establish conversation", error);
     }
   };
 
   return (
-    <div className="flex h-screen w-full bg-background overflow-hidden">
+    <div className="flex h-screen w-full bg-background overflow-hidden font-sans text-foreground">
       <aside 
-        className={`w-full md:w-[380px] flex-col border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60
-        ${isViewingSpecificChat ? "hidden md:flex" : "flex"}`}
+        className={`w-full md:w-[380px] flex-col border-r bg-card/30 backdrop-blur-xl 
+        ${isMobileChatActive ? "hidden md:flex" : "flex"}`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b h-[72px]">
+        <header className="flex items-center justify-between p-4 border-b h-[72px]">
           <div className="flex items-center gap-3">
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-10 h-10" } }} />
+            <UserButton appearance={{ elements: { avatarBox: "w-10 h-10" } }} />
             <div className="flex flex-col">
-              <span className="font-semibold text-sm tracking-tight">{user?.firstName || "My Profile"}</span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span> Online
+              <span className="font-bold text-sm tracking-tight leading-none mb-1">
+                {user?.firstName || "Anonymous"}
               </span>
+              <div className="flex items-center gap-1.5">
+                <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Active Now</span>
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Search Area */}
-        <div className="p-4 border-b bg-muted/10">
+        <section className="p-4 border-b bg-muted/5">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder="Search to start a chat..." 
-              className="pl-9 bg-background border-muted-foreground/20 focus-visible:ring-primary/50 rounded-full shadow-sm"
-              value={searchPhrase}
-              onChange={(e) => setSearchPhrase(e.target.value)}
+              placeholder="Find a friend..." 
+              className="pl-9 bg-background/50 border-muted-foreground/10 focus-visible:ring-primary/40 rounded-xl h-10 text-sm"
+              value={searchText}
+              // This will no longer error because searchText is typed as string
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-        </div>
+        </section>
 
-        {/* Chat List */}
-        <ScrollArea className="flex-1 bg-muted/5">
-          <div className="p-3 space-y-2">
-            
-            {/* SEARCH RESULTS */}
-            {searchPhrase && (
-              <div className="mb-2 px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Search Results
-              </div>
-            )}
-            {searchPhrase && discoveredUsers?.map((u) => (
-              <button 
-                key={u._id}
-                className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-muted/80 transition-all text-left group"
-                onClick={() => handleStartChat(u._id)}
-              >
-                <Avatar className="h-12 w-12 border border-background shadow-sm group-hover:scale-105 transition-transform">
-                  <AvatarImage src={u.image} />
-                  <AvatarFallback className="bg-primary/10 text-primary">{u.name[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-semibold truncate">{u.name}</p>
-                  <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                    <Plus className="h-3 w-3" /> Start conversation
-                  </p>
+        <ScrollArea className="flex-1">
+          <div className="py-2 space-y-0.5">
+            {searchText && (
+              <div className="px-4">
+                <div className="py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
+                  Discovered Users
                 </div>
-              </button>
-            ))}
-
-            {/* EMPTY STATE */}
-            {!searchPhrase && activeChats?.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-40 text-center px-4">
-                <div className="h-12 w-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-3">
-                  <MessageSquare className="h-6 w-6" />
-                </div>
-                <p className="text-sm font-medium">No messages yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Search for a user above to break the ice.</p>
+                {searchResults?.map((profile) => (
+                  <button 
+                    key={profile._id}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-primary/5 transition-all text-left group mb-1"
+                    onClick={() => handleSelectUser(profile._id)}
+                  >
+                    <Avatar className="h-11 w-11 ring-2 ring-background shadow-md">
+                      <AvatarImage src={profile.image} />
+                      <AvatarFallback className="font-bold">{profile.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{profile.name}</p>
+                      <p className="text-[11px] text-primary font-medium flex items-center gap-1 mt-0.5 opacity-80">
+                        <Plus className="h-3 w-3" /> New Chat
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
-            {/* ACTIVE CONVERSATIONS */}
-            {!searchPhrase && activeChats?.map((chat) => (
-              <button 
-                key={chat._id}
-                className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all text-left
-                  ${pathname.includes(chat._id) ? "bg-primary/10 border-primary/20 shadow-sm" : "hover:bg-muted/60 border border-transparent"}
-                `}
-                onClick={() => router.push(`/chat/${chat._id}`)}
-              >
-                <Avatar className="h-12 w-12 border shadow-sm">
-                  <AvatarImage src={chat.otherUser?.image} />
-                  <AvatarFallback>{chat.otherUser?.name?.[0] || "?"}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <p className="text-sm font-semibold truncate">{chat.otherUser?.name}</p>
-                    {chat.latestMsg && (
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {format(new Date(chat.latestMsg._creationTime), "h:mm a")}
-                      </span>
-                    )}
+            {!searchText && !activeConversations && (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" />
+              </div>
+            )}
+
+            {!searchText && activeConversations?.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                <MessageSquare className="h-10 w-10 text-muted-foreground mb-4 opacity-20" />
+                <h3 className="text-sm font-semibold">No conversations yet</h3>
+              </div>
+            )}
+
+            {!searchText && activeConversations?.map((convo) => {
+              const isActive = pathname.includes(convo._id);
+              return (
+                <button 
+                  key={convo._id}
+                  className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 text-left border-y border-transparent
+                    ${isActive 
+                      ? "bg-primary/10 border-primary/5 text-primary" 
+                      : "hover:bg-muted/50 text-foreground"}
+                  `}
+                  onClick={() => router.push(`/chat/${convo._id}`)}
+                >
+                  <Avatar className={`h-12 w-12 shrink-0 border-2 shadow-sm ${isActive ? "border-primary/20" : "border-background"}`}>
+                    <AvatarImage src={convo.otherUser?.image} />
+                    <AvatarFallback className="font-bold">{convo.otherUser?.name?.[0]}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <p className={`text-sm font-bold truncate pr-2 ${isActive ? "text-primary" : "text-foreground"}`}>
+                        {convo.otherUser?.name}
+                      </p>
+                      {convo.latestMsg && (
+                        <span className={`text-[10px] shrink-0 font-medium ${isActive ? "text-primary/70" : "text-muted-foreground"}`}>
+                          {format(new Date(convo.latestMsg._creationTime), "h:mm a")}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className={`text-xs truncate max-w-[95%] ${isActive ? "text-primary/80 font-medium" : "text-muted-foreground"}`}>
+                      {convo.latestMsg 
+                        ? convo.latestMsg.content 
+                        : <span className="italic opacity-60">Start chatting...</span>}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {chat.latestMsg ? chat.latestMsg.content : <span className="italic text-primary/70">New conversation started...</span>}
-                  </p>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </ScrollArea>
       </aside>
 
-      <main className={`flex-1 flex flex-col bg-background ${!isViewingSpecificChat ? "hidden md:flex" : "flex"}`}>
+      <main className={`flex-1 flex flex-col relative ${!isMobileChatActive ? "hidden md:flex" : "flex"}`}>
         {children}
       </main>
     </div>
