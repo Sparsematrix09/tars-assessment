@@ -39,7 +39,7 @@ export default function Home() {
             </Link>
           </SignedIn>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-border/50 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 w-full">
           <div className="flex flex-col items-center text-center p-4">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
               <Zap className="h-5 w-5 text-primary" />
