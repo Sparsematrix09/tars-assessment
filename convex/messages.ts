@@ -2,11 +2,11 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // checking identity before sending th e datat
-export const fetchByChatId = query({
+export const fetchByChatId =query({
   args: { chatId: v.id("conversations")},
   handler: async (ctx, { chatId }) =>{
     const identity = await ctx.auth.getUserIdentity();    
-    if (!identity){
+    if(!identity){
       console.warn("Unauthorized attempt to fetch messages.");
       return [];
     }
@@ -17,26 +17,26 @@ export const fetchByChatId = query({
   },
 });
 
-export const send = mutation({
+export const send=mutation({
   args: { 
     chatId: v.id("conversations"), 
     text: v.string() 
   },
-  handler: async (ctx, { chatId, text }) =>{
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity){
+  handler:async(ctx, { chatId, text }) =>{
+    const identity=await ctx.auth.getUserIdentity();
+    if(!identity){
       throw new Error("Authentication required to send messages.");
     }
-    const messageContent = text.trim();
-    if (!messageContent) {
+    const messageContent=text.trim();
+    if(!messageContent) {
       throw new Error("Message content cannot be empty.");
     }
-    const user = await ctx.db
+    const user =await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .unique();
 
-    if (!user){
+    if(!user){
       throw new Error("User profile not found in local database.");
     }
     await ctx.db.insert("messages",{
@@ -44,5 +44,28 @@ export const send = mutation({
       senderId: user._id,
       content: messageContent,
     });
+  },
+});
+
+export const deletemsg = mutation({
+  args: {messageId: v.id("messages")},
+
+  handler: async(ctx, { messageId })=>{
+    const identity =await ctx.auth.getUserIdentity();
+    if(!identity){
+      throw new Error("Unauthorized");
+    }
+
+    const message = await ctx.db.get(messageId);
+    if(!message){
+      throw new Error("Message not found");
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if(message.senderId !== user?._id) throw new Error("Forbidden");
+    await ctx.db.patch(messageId, { deleted: true });
   },
 });

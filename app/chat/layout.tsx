@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
@@ -25,10 +25,17 @@ export default function ChatApplicationLayout({ children }: { children: React.Re
 
   const activeConversations = useQuery(
     api.conversations.getUserChats, 
-    user ? {} : "skip"
+    user?{} : "skip"
   );
+  const updatePresence = useMutation(api.users.updatepresence);
+  useEffect(()=>{
+    if(!user) return;
+    updatePresence();
+    const interval = setInterval(updatePresence, 30000);
+    return ()=>clearInterval(interval);
+  }, [user]);
 
-  const startConversation = useMutation(api.conversations.findOrCreate);
+  const startConversation =useMutation(api.conversations.findOrCreate);
   const isMobileChatActive = pathname !== "/chat";
 
   const handleSelectUser =async (targetUserId: Id<"users">) =>{
@@ -115,45 +122,65 @@ export default function ChatApplicationLayout({ children }: { children: React.Re
                 <h3 className="text-sm font-semibold">No conversations yet</h3>
               </div>
             )}
-
-            {!searchText && activeConversations?.map((convo) => {
-              const isActive = pathname.includes(convo._id);
-              return (
-                <button 
-                  key={convo._id}
-                  className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 text-left border-y border-transparent
-                    ${isActive 
-                      ? "bg-primary/10 border-primary/5 text-primary" 
-                      : "hover:bg-muted/50 text-foreground"}
-                  `}
-                  onClick={() => router.push(`/chat/${convo._id}`)}
-                >
-                  <Avatar className={`h-12 w-12 shrink-0 border-2 shadow-sm ${isActive ? "border-primary/20" : "border-background"}`}>
-                    <AvatarImage src={convo.otherUser?.image} />
-                    <AvatarFallback className="font-bold">{convo.otherUser?.name?.[0]}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <p className={`text-sm font-bold truncate pr-2 ${isActive ? "text-primary" : "text-foreground"}`}>
-                        {convo.otherUser?.name}
-                      </p>
-                      {convo.latestMsg && (
-                        <span className={`text-[10px] shrink-0 font-medium ${isActive ? "text-primary/70" : "text-muted-foreground"}`}>
-                          {format(new Date(convo.latestMsg._creationTime), "h:mm a")}
-                        </span>
-                      )}
-                    </div>
-                    
+          {/*added the active user logic and the typing indicator logic here to show*/}
+          {!searchText && activeConversations?.map((convo) => {
+          const isActive = pathname.includes(convo._id);          
+          const isOnline = convo.otherUser?.lastseen && (Date.now() - convo.otherUser.lastseen<60000);
+          const isOtherUserTyping = 
+            convo.typinguser&&convo.typinguser!== user?.id&&convo.typingtime&&(Date.now() - convo.typingtime < 2000);
+          return (
+            <button 
+              key={convo._id}
+              className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 text-left border-y border-transparent
+                ${isActive 
+                  ? "bg-primary/10 border-primary/5 text-primary" 
+                  : "hover:bg-muted/50 text-foreground"}
+              `}
+              onClick={() => router.push(`/chat/${convo._id}`)}
+            >
+              <div className="relative shrink-0">
+                <Avatar className={`h-12 w-12 border-2 shadow-sm ${isActive ? "border-primary/20" : "border-background"}`}>
+                  <AvatarImage src={convo.otherUser?.image} />
+                  <AvatarFallback className="font-bold">{convo.otherUser?.name?.[0]}</AvatarFallback>
+                </Avatar>                
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background shadow-sm z-10" />
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-0.5">
+                  <p className={`text-sm font-bold truncate pr-2 ${isActive ? "text-primary" : "text-foreground"}`}>
+                    {convo.otherUser?.name}
+                  </p>
+                  {convo.latestMsg && (
+                    <span className={`text-[10px] shrink-0 font-medium ${isActive ? "text-primary/70" : "text-muted-foreground"}`}>
+                      {format(new Date(convo.latestMsg._creationTime), "h:mm a")}
+                    </span>
+                  )}
+                </div>                
+                <div className="h-4 flex items-center">
+                  {isOtherUserTyping ? (
+                    <p className="text-[11px] text-primary animate-pulse font-semibold flex items-center gap-1">
+                      <span className="flex gap-0.5">
+                        <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="w-1 h-1 bg-primary rounded-full animate-bounce"></span>
+                      </span>
+                      Typing
+                    </p>
+                  ) : (
                     <p className={`text-xs truncate max-w-[95%] ${isActive ? "text-primary/80 font-medium" : "text-muted-foreground"}`}>
                       {convo.latestMsg 
-                        ? convo.latestMsg.content 
+                        ? (convo.latestMsg.deleted ? <span className="italic opacity-60">Message deleted</span> : convo.latestMsg.content)
                         : <span className="italic opacity-60">Start chatting...</span>}
                     </p>
-                  </div>
-                </button>
-              );
-            })}
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
           </div>
         </ScrollArea>
       </aside>

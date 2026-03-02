@@ -41,6 +41,18 @@ export const findOrCreate =mutation({
   },
 });
 
+export const setTypingIndicator = mutation({
+  args:{ chatId: v.id("conversations"), isTyping: v.boolean() },
+  handler: async (ctx, { chatId, isTyping }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if(!identity) return;
+    await ctx.db.patch(chatId,{
+      typinguser: isTyping ? identity.subject : "",
+      typingtime: isTyping ? Date.now() : 0,
+    });
+  },
+});
+
 export const getUserChats =query({
   handler: async (ctx) => {
     const user = await getAuthenticatedUser(ctx);

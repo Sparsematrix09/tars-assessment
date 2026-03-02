@@ -8,44 +8,61 @@ import { format, isToday, isThisYear } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Send, Loader2, MessageSquareDotIcon } from "lucide-react";
 
-const gentime = (unixTime: number) =>{
+const gentime=(unixTime: number) =>{
   const msgdate = new Date(unixTime);
-  if (isToday(msgdate)) return format(msgdate, "h:mm a");
-  if (isThisYear(msgdate)) return format(msgdate, "MMM d, h:mm a");
+  if(isToday(msgdate)) return format(msgdate, "h:mm a");
+  if(isThisYear(msgdate)) return format(msgdate, "MMM d, h:mm a");
   return format(msgdate, "MMM d yyyy, h:mm a");
 };
 
 export default function ActiveConversationArea({ 
   params 
-}: { 
+}:{ 
   params: Promise<{ conversationId: string }> 
-}) {
+}){
   const router = useRouter();
   const { conversationId } = use(params);
   const chatId = conversationId as Id<"conversations">;
   const [msgdraft, setMsgDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentUser = useQuery(api.users.me); 
   const chatMessages = useQuery(api.messages.fetchByChatId, { chatId });
   const sendmsg = useMutation(api.messages.send);
+  const setTypingIndicator = useMutation(api.conversations.setTypingIndicator);
 
-  useEffect(() => {
-    if (scrollRef.current) {
+  useEffect(()=>{
+    if(scrollRef.current){
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatMessages]);
 
-  const handlesendMsg = async (e: React.FormEvent)=>{
+  const handleInputChange=(e: React.ChangeEvent<HTMLInputElement>)=>{
+    const value = e.target.value;
+    setMsgDraft(value);
+    if (value.trim().length > 0) {
+      setTypingIndicator({ chatId, isTyping: true });
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        setTypingIndicator({ chatId, isTyping: false });
+      }, 2000);
+    }
+  };
+
+  const handlesendMsg = async(e: React.FormEvent)=>{
     e.preventDefault();
     const cleanContent = msgdraft.trim();
 
-    if (!cleanContent || !chatId || isSending) return;    
+    if(!cleanContent || !chatId || isSending) return;    
+    
+    if(typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    setTypingIndicator({ chatId, isTyping: false });
     setMsgDraft("");
     setIsSending(true);
-    
     try {
       await sendmsg({ chatId, text: cleanContent });
     } catch (error) {
@@ -69,10 +86,9 @@ export default function ActiveConversationArea({
         </Button>
        
         <div className="flex flex-col">
-          <h2 className="font-bold text-sm tracking-tight">Conversation</h2>
-          <div className="flex items-center gap-1 text-[10px] text-primary font-medium uppercase tracking-wider">
-            <ShieldCheck className="h-3 w-3" />
-            <span>Secure Connection</span>
+          <div className="flex items-center gap-2">
+            <MessageSquareDotIcon className="h-5 w-5 text-primary" />
+            <h2 className="font-bold text-sm tracking-tight">Conversation</h2>
           </div>
         </div>
       </header>
@@ -84,16 +100,16 @@ export default function ActiveConversationArea({
             <div className="flex flex-col items-center justify-center pt-20 text-center">
               <div className="p-4 bg-background rounded-2xl border shadow-sm max-w-xs">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Beginning of your encrypted chat history.
+                  Beginning of your chat history.
                 </p>
               </div>
             </div>
           )}
 
-          {chatMessages?.map((msg, index) =>{
+          {chatMessages?.map((msg, index)=>{
             const isMe = currentUser?._id === msg.senderId;
-            const isPrevSame = index > 0 && chatMessages[index - 1].senderId === msg.senderId;
-            return(
+            const isPrevSame = index>0 && chatMessages[index - 1].senderId === msg.senderId;
+            return (
               <div 
                 key={msg._id} 
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isPrevSame ? "mt-1" : "mt-6"}`}
@@ -101,7 +117,6 @@ export default function ActiveConversationArea({
                 <div 
                   className={`px-4 py-2.5 max-w-[85%] md:max-w-[70%] shadow-sm text-[15px]
                     ${isMe 
-                      // Replaced solid darkbkg with light bckg nd border
                       ? "bg-primary/15 text-primary border border-primary/20 rounded-2xl rounded-tr-sm" 
                       : "bg-background border border-border text-foreground rounded-2xl rounded-tl-sm"
                     }
@@ -131,7 +146,7 @@ export default function ActiveConversationArea({
             <Input 
               placeholder="Type your message..." 
               value={msgdraft}
-              onChange={(e) => setMsgDraft(e.target.value)}
+              onChange={handleInputChange}
               className="rounded-xl bg-muted/30 border-none h-11 px-5 pr-12 text-[15px] focus-visible:ring-primary/30"
               disabled={isSending}
             />
@@ -142,7 +157,7 @@ export default function ActiveConversationArea({
               className="absolute right-1 top-1 h-9 w-9 text-primary hover:bg-primary/10 transition-colors" 
               disabled={!msgdraft.trim() || isSending}
             >
-              {isSending? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {isSending?<Loader2 className="h-4 w-4 animate-spin" />:<Send className="h-4 w-4" />}
             </Button>
           </div>
         </form>
