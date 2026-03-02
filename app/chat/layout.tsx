@@ -56,7 +56,7 @@ export default function ChatApplicationLayout({ children }: { children: React.Re
               </span>
               <div className="flex items-center gap-1.5">
                 <Circle className="w-2 h-2 fill-green-500 text-green-500" />
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Active Now</span>
+                <span className="text-[15px] font-bold text-muted-foreground">Active Now</span>
               </div>
             </div>
           </div>
