@@ -10,13 +10,10 @@ export default function Home() {
       <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-3xl mx-auto space-y-8 mt-12">
         <div className="space-y-4">
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight">
-            Connect in <br className="hidden md:block" />
-            <span className="text-5xl md:text-7xl font-extrabold tracking-tight ">
-              Real-Time
-            </span>
+            Connect in Real-Time <span className="hidden md:block" />
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            A lightning-fast, highly responsive chat platform. Find users, start conversations, and message seamlessly with instant sync.
+            A lightning-fast, highly responsive chat platform. Find users, start conversations, and message seamlessly with instant sync with convex subscriptions, created for assessment though.
           </p>
         </div>
         <div className="w-full pt-4 pb-12">
@@ -47,14 +44,14 @@ export default function Home() {
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
               <Zap className="h-5 w-5 text-primary" />
             </div>
-            <h3 className="font-semibold text-sm">Instant Sync</h3>
+            <h3 className="font-semibold text-sm">Instant sync</h3>
             <p className="text-xs text-muted-foreground mt-1">Used convex subscriptions.</p>
           </div>
           <div className="flex flex-col items-center text-center p-4">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
               <Shield className="h-5 w-5 text-primary" />
             </div>
-            <h3 className="font-semibold text-sm">Secure Auth</h3>
+            <h3 className="font-semibold text-sm">Secure auth</h3>
             <p className="text-xs text-muted-foreground mt-1">Protected by clerk identity management.</p>
           </div>
           <div className="flex flex-col items-center text-center p-4">
