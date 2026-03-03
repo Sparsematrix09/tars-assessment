@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, MessageSquare, Plus, Circle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
+
 export default function ChatApplicationLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
